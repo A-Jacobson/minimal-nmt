@@ -2,6 +2,7 @@ import torch
 from torch import nn
 
 from attention import LuongAttention
+import hyperparams as hp
 
 
 class Encoder(nn.Module):
@@ -9,7 +10,7 @@ class Encoder(nn.Module):
                  n_layers, dropout):
         super(Encoder, self).__init__()
         self.hidden_dim = hidden_dim
-        self.embed = nn.Embedding(source_vocab_size, embed_dim, padding_idx=1)
+        self.embed = nn.Embedding(source_vocab_size, embed_dim, padding_idx=hp.pad_idx)
         self.gru = nn.GRU(embed_dim, hidden_dim, n_layers,
                           dropout=dropout, bidirectional=True)
 
@@ -28,7 +29,7 @@ class Decoder(nn.Module):
                  n_layers, dropout):
         super(Decoder, self).__init__()
         self.n_layers = n_layers
-        self.embed = nn.Embedding(target_vocab_size, embed_dim)
+        self.embed = nn.Embedding(target_vocab_size, embed_dim, padding_idx=hp.pad_idx)
         self.attention = LuongAttention(hidden_dim)
         self.gru = nn.GRU(embed_dim + hidden_dim, hidden_dim, n_layers,
                           dropout=dropout)

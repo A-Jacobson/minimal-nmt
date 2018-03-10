@@ -4,13 +4,13 @@ from torch import nn
 
 class LuongAttention(nn.Module):
     """
-    LuongAttention from Effective Approaches to Attention-based Neural Machine Translation
+    Luong Attention from Effective Approaches to Attention-based Neural Machine Translation
     https://arxiv.org/pdf/1508.04025.pdf
     """
 
-    def __init__(self, dim):
+    def __init__(self, attention_dim):
         super(LuongAttention, self).__init__()
-        self.W = nn.Linear(dim, dim, bias=False)
+        self.W = nn.Linear(attention_dim, attention_dim, bias=False)
 
     def score(self, decoder_hidden, encoder_out):
         # linear transform encoder out (seq, batch, dim)
@@ -26,6 +26,5 @@ class LuongAttention(nn.Module):
         context = encoder_out.permute(
             1, 2, 0) @ mask  # (2, 50, 15) @ (2, 15, 1)
         context = context.permute(2, 0, 1)  # (seq, batch, dim)
-        mask = mask.permute(2, 0, 1)  # (seq2, batch, seq1)
+        mask = mask.permute(2, 0, 1)  # (target, batch, source)
         return context, mask
-

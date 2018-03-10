@@ -17,9 +17,10 @@ https://arxiv.org/pdf/1703.03906.pdf
 - Luong Attention.
 - Training on Multi30k German to English translation task.
 - Attention Visualization.
+- Teacher Forcing.
 - Greedy Decoding.
+- [nmt tutorial notebook](https://github.com/A-Jacobson/minimal-nmt/blob/master/nmt_tutorial.ipynb)
 - (tentative) beam search decoding.
-- nmt tutorial notebook (in progress).
 
 ## Setup
 
@@ -42,6 +43,7 @@ python train.py
 ```
 
 view logs in Tensorboard
+decent alignments should be seen after 2-3 epochs.
 ```
 tensorboard --logdir runs
 ```

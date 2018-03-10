@@ -3,8 +3,8 @@ from torch.optim import Adam
 import hyperparams as hp
 from datasets import load_dataset
 from models import Encoder, Decoder, Seq2Seq
-from utils import train
 from sgdr import SGDRScheduler
+from utils import train
 
 train_iter, val_iter, test_iter, DE, EN = load_dataset(batch_size=hp.batch_size, device=hp.device)
 

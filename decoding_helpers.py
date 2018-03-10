@@ -1,6 +1,8 @@
 import random
+
 import torch
 from torch.autograd import Variable
+import torch.nn.functional as F
 
 
 class Teacher:
@@ -31,23 +33,32 @@ class Teacher:
 
 
 class Greedy:
-    def __init__(self, maxlen=20, sos_index=2):
+    def __init__(self, maxlen=20, sos_index=2, use_stop=False):
         self.maxlen = maxlen
         self.sos_index = sos_index
+        self.use_stop = use_stop
 
     def set_maxlen(self, maxlen):
         self.maxlen = maxlen
 
     def generate(self, decoder, encoder_out, encoder_hidden):
-        #TODO support generation until stop token is sampled
-        seq, batch, _ = encoder_out.size()
+        stop = False
+        seq, batch_size, _ = encoder_out.size()
+        if self.use_stop:
+            assert batch_size == 1, 'use_stop does not support batching, set batch size to 1'
+
         outputs = []
-        masks = []
+        masks = []  # trg, batch, source
         decoder_hidden = encoder_hidden[-decoder.n_layers:]  # take what we need from encoder
-        output = Variable(torch.zeros_like(encoder_hidden[:1, :, 0]).long() + self.sos_index)  # start token
-        for t in range(self.maxlen):
+        output = torch.zeros_like(encoder_hidden[:1, :, 0]).long() + self.sos_index  # start token
+        while (len(outputs) <= self.maxlen) and not stop:
             output, decoder_hidden, mask = decoder(output, encoder_out, decoder_hidden)
             outputs.append(output)
             masks.append(mask.data)
             output = Variable(output.data.max(dim=2)[1])
-        return torch.cat(outputs), torch.cat(masks).permute(1, 2, 0)  # batch, src, trg
+            if self.use_stop:
+                #  generate until stop token is sampled
+                _, pred = F.softmax(output, dim=-1).topk(1)
+                if int(pred.data[0]) == self.sos_index:
+                    stop = True
+        return torch.cat(outputs), torch.cat(masks).permute(1, 2, 0)  # batch, trg, src (i, x, y)
