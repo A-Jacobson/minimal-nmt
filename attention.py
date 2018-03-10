@@ -22,8 +22,10 @@ class LuongAttention(nn.Module):
 
     def forward(self, decoder_hidden, encoder_out):
         energies = self.score(decoder_hidden, encoder_out)
-        attention_weights = F.softmax(energies, dim=1)  # batch, seq, 1
+        mask = F.softmax(energies, dim=1)  # batch, seq, 1
         context = encoder_out.permute(
-            1, 2, 0) @ attention_weights  # (2, 50, 15) @ (2, 15, 1)
+            1, 2, 0) @ mask  # (2, 50, 15) @ (2, 15, 1)
         context = context.permute(2, 0, 1)  # (seq, batch, dim)
-        return context, attention_weights.permute(2, 0, 1)  # (seq2, batch, seq1)
+        mask = mask.permute(2, 0, 1)  # (seq2, batch, seq1)
+        return context, mask
+

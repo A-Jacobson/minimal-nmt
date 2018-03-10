@@ -45,6 +45,9 @@ view logs in Tensorboard
 ```
 tensorboard --logdir runs
 ```
+(partially trained attention heatmap)
+
+![img](assets/attention_vis.png)
 
 
 

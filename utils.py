@@ -9,6 +9,8 @@ from tensorboardX import SummaryWriter
 from torch.nn.utils import clip_grad_norm
 from PIL import Image
 from tqdm import tqdm
+from decoding_helpers import Greedy, Teacher
+import hyperparams as hp
 
 
 def sequence_to_text(sequence, field):
@@ -23,13 +25,15 @@ def evaluate(model, val_iter, writer, step):
     model.eval()
     total_loss = 0
     fields = val_iter.dataset.fields
+    greedy_decoding = Greedy()
     random_batch = np.random.randint(0, len(val_iter) - 1)
     for i, batch in enumerate(val_iter):
         if batch.trg.size(1) != val_iter.batch_size:  # ignore the last batch
             continue
-        out, attention = model(batch.src, batch.trg, teacher_forcing_ratio=0)
+        greedy_decoding.set_maxlen(len(batch.trg))
+        out, attention = model(batch.src, greedy_decoding)
         loss = F.cross_entropy(out.view(-1, out.size(2)),
-                               batch.trg.view(-1), ignore_index=2)
+                               batch.trg.view(-1), ignore_index=1)
         total_loss += loss.data[0]
         if i == random_batch:
             probs, pred = F.softmax(out, dim=-1).topk(1)
@@ -49,15 +53,17 @@ def evaluate(model, val_iter, writer, step):
 def train(model, optimizer, scheduler, train_iter, val_iter, num_epochs, teacher_forcing_ratio=0.5, step=0):
     model.train()
     writer = SummaryWriter()
+    teacher_decoding = Teacher(teacher_forcing_ratio)
     for epoch in tqdm(range(num_epochs), total=num_epochs, unit=' epochs'):
         pbar = tqdm(train_iter, total=len(train_iter), unit=' batches')
         for b, batch in enumerate(pbar):
             if batch.trg.size(1) != train_iter.batch_size:  # ignore the last batch
                 continue
             optimizer.zero_grad()
-            out, attention = model(batch.src, batch.trg, teacher_forcing_ratio)
-            loss = F.cross_entropy(out[1:].view(-1, out.size(2)),
-                                   batch.trg[1:].view(-1), ignore_index=2)
+            teacher_decoding.load_targets(batch.trg)
+            out, attention = model(batch.src, teacher_decoding)
+            loss = F.cross_entropy(out.view(-1, out.size(2)),
+                                   batch.trg[1:].view(-1), ignore_index=hp.pad_idx)
             loss.backward()
             clip_grad_norm(model.parameters(), 10.0, norm_type=2)  # prevent exploding grads
             scheduler.step()
