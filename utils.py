@@ -7,7 +7,7 @@ import torch
 import torch.nn.functional as F
 from PIL import Image
 from tensorboardX import SummaryWriter
-from torch.nn.utils import clip_grad_norm
+from torch import nn
 from tqdm import tqdm
 
 import hyperparams as hp
@@ -30,18 +30,18 @@ def evaluate(model, val_iter, writer, step):
     random_batch = np.random.randint(0, len(val_iter) - 1)
     for i, batch in enumerate(val_iter):
         greedy.set_maxlen(len(batch.trg[1:]))
-        out, attention = model(batch.src, greedy)
-        seq_len, batch_size, vocab_size = out.size()
-        loss = F.cross_entropy(out.view(seq_len * batch_size, vocab_size),
-                               batch.trg[1:].view(seq_len * batch_size),
-                               ignore_index=hp.pad_idx)
+        outputs, attention = model(batch.src, greedy)
+        seq_len, batch_size, vocab_size = outputs.size()
+        loss = F.cross_entropy(outputs.view(seq_len * batch_size, vocab_size),
+                          batch.trg[1:].view(-1),
+                          ignore_index=hp.pad_idx)
         total_loss += loss.data[0]
 
         # tensorboard logging
         if i == random_batch:
-            probs, pred = F.softmax(out, dim=-1).topk(1)
+            preds = outputs.topk(1)[1]
             source = sequence_to_text(batch.src[:, 0].data, fields['src'])
-            prediction = sequence_to_text(pred[:, 0].data, fields['trg'])
+            prediction = sequence_to_text(preds[:, 0].data, fields['trg'])
             target = sequence_to_text(batch.trg[1:, 0].data, fields['trg'])
             attention_plot = show_attention(attention[0],
                                             prediction, source, return_array=True)
@@ -53,7 +53,8 @@ def evaluate(model, val_iter, writer, step):
     writer.add_scalar('val_loss', total_loss / len(val_iter), step)
 
 
-def train(model, optimizer, scheduler, train_iter, val_iter, num_epochs, teacher_forcing_ratio=0.5, step=0):
+def train(model, optimizer, scheduler, train_iter, val_iter,
+          num_epochs, teacher_forcing_ratio=0.5, step=0):
     model.train()
     writer = SummaryWriter()
     teacher = Teacher(teacher_forcing_ratio)
@@ -61,14 +62,14 @@ def train(model, optimizer, scheduler, train_iter, val_iter, num_epochs, teacher
         pbar = tqdm(train_iter, total=len(train_iter), unit=' batches')
         for b, batch in enumerate(pbar):
             optimizer.zero_grad()
-            teacher.load_targets(batch.trg)
-            out, attention = model(batch.src, teacher)
-            seq_len, batch_size, vocab_size = out.size()
-            loss = F.cross_entropy(out.view(seq_len*batch_size, vocab_size),
-                                   batch.trg[1:].view(seq_len*batch_size),
-                                   ignore_index=hp.pad_idx)
+            teacher.set_targets(batch.trg)
+            outputs, masks = model(batch.src, teacher)
+            seq_len, batch_size, vocab_size = outputs.size()
+            loss = F.cross_entropy(outputs.view(seq_len * batch_size, vocab_size),
+                              batch.trg[1:].view(-1),
+                              ignore_index=hp.pad_idx)
             loss.backward()
-            clip_grad_norm(model.parameters(), 10.0, norm_type=2)  # prevent exploding grads
+            nn.utils.clip_grad_norm(model.parameters(), 10.0, norm_type=2)  # prevent exploding grads
             scheduler.step()
             optimizer.step()
 

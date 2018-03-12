@@ -2,7 +2,6 @@ import random
 
 import torch
 from torch.autograd import Variable
-import torch.nn.functional as F
 
 
 class Teacher:
@@ -11,25 +10,27 @@ class Teacher:
         self.targets = None
         self.maxlen = 0
 
-    def load_targets(self, targets):
+    def set_targets(self, targets):
         self.targets = targets
-        self.maxlen = len(targets)
+        self.maxlen = len(targets) - 1
 
-    def generate(self, decoder, encoder_out, encoder_hidden):
-        outputs = []
-        masks = []
+    def __call__(self, decoder, encoder_out, encoder_hidden):
+        seq1_len, batch_size, _ = encoder_out.size()
+        target_vocab_size = decoder.target_vocab_size
+
+        outputs = Variable(encoder_out.data.new(self.maxlen, batch_size, target_vocab_size))
+        masks = torch.zeros(self.maxlen, batch_size, seq1_len)
         decoder_hidden = encoder_hidden[-decoder.n_layers:]  # take what we need from encoder
         output = self.targets[0].unsqueeze(0)  # start token
-        for t in range(1, self.maxlen):
+        for t in range(self.maxlen):
             output, decoder_hidden, mask = decoder(output, encoder_out, decoder_hidden)
-            outputs.append(output)
-            masks.append(mask.data)
+            outputs[t] = output
+            masks[t] = mask.data
             output = Variable(output.data.max(dim=2)[1])
             # teacher forcing
-            is_teacher = random.random() < self.teacher_forcing_ratio
-            if is_teacher:
-                output = self.targets[t].unsqueeze(0)
-        return torch.cat(outputs), torch.cat(masks).permute(1, 2, 0)  # batch, src, trg
+            if random.random() < self.teacher_forcing_ratio:
+                output = self.targets[t + 1].unsqueeze(0)
+        return outputs, masks.permute(1, 2, 0)  # batch, src, trg
 
 
 class Greedy:
@@ -41,24 +42,25 @@ class Greedy:
     def set_maxlen(self, maxlen):
         self.maxlen = maxlen
 
-    def generate(self, decoder, encoder_out, encoder_hidden):
-        stop = False
-        seq, batch_size, _ = encoder_out.size()
+    def __call__(self, decoder, encoder_out, encoder_hidden):
+
+        seq1_len, batch_size, _ = encoder_out.size()
+        target_vocab_size = decoder.target_vocab_size
+
         if self.use_stop:
             assert batch_size == 1, 'use_stop does not support batching, set batch size to 1'
 
-        outputs = []
-        masks = []  # trg, batch, source
+        outputs = Variable(encoder_out.data.new(self.maxlen, batch_size, target_vocab_size))
+        masks = torch.zeros(self.maxlen, batch_size, seq1_len)
         decoder_hidden = encoder_hidden[-decoder.n_layers:]  # take what we need from encoder
-        output = torch.zeros_like(encoder_hidden[:1, :, 0]).long() + self.sos_index  # start token
-        while (len(outputs) <= self.maxlen) and not stop:
+        output = Variable(outputs.data.new(1, batch_size).fill_(self.sos_index).long())  # start token (ugly hack)
+        for t in range(self.maxlen):
             output, decoder_hidden, mask = decoder(output, encoder_out, decoder_hidden)
-            outputs.append(output)
-            masks.append(mask.data)
+            outputs[t] = output
+            masks[t] = mask.data
             output = Variable(output.data.max(dim=2)[1])
-            if self.use_stop:
-                #  generate until stop token is sampled
-                _, pred = F.softmax(output, dim=-1).topk(1)
-                if int(pred.data[0]) == self.sos_index:
-                    stop = True
-        return torch.cat(outputs), torch.cat(masks).permute(1, 2, 0)  # batch, trg, src (i, x, y)
+            if self.use_stop and int(output.data) == self.sos_index:
+                break
+        return outputs, masks.permute(1, 2, 0)  # batch, trg, src (i, x, y)
+
+

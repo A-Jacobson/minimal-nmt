@@ -20,7 +20,7 @@ https://arxiv.org/pdf/1703.03906.pdf
 - Teacher Forcing.
 - Greedy Decoding.
 - [nmt tutorial notebook](https://github.com/A-Jacobson/minimal-nmt/blob/master/nmt_tutorial.ipynb)
-- (tentative) beam search decoding.
+- minimal beam search decoding.
 
 ## Setup
 

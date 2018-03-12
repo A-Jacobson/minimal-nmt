@@ -8,7 +8,7 @@ embed_dim = 256
 n_layers = 2
 dropout = 0.2
 batch_size = 32
-num_epochs = 20
+num_epochs = 50
 
 # training
 max_lr = 1e-4

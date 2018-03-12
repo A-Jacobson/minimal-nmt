@@ -28,6 +28,7 @@ class Decoder(nn.Module):
     def __init__(self, target_vocab_size, embed_dim, hidden_dim,
                  n_layers, dropout):
         super(Decoder, self).__init__()
+        self.target_vocab_size = target_vocab_size
         self.n_layers = n_layers
         self.embed = nn.Embedding(target_vocab_size, embed_dim, padding_idx=hp.pad_idx)
         self.attention = LuongAttention(hidden_dim)
@@ -55,5 +56,5 @@ class Seq2Seq(nn.Module):
 
     def forward(self, source, decoding_helper):
         encoder_out, encoder_hidden = self.encoder(source)
-        outputs, masks = decoding_helper.generate(self.decoder, encoder_out, encoder_hidden)
+        outputs, masks = decoding_helper(self.decoder, encoder_out, encoder_hidden)
         return outputs, masks
