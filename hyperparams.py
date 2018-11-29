@@ -1,3 +1,5 @@
+import torch
+
 # vocab
 pad_idx = 1
 sos_idx = 2
@@ -18,4 +20,4 @@ cycle_length = 3000
 max_len = 20
 
 # system
-device = 1
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

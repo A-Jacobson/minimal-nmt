@@ -33,9 +33,9 @@ def evaluate(model, val_iter, writer, step):
         outputs, attention = model(batch.src, greedy)
         seq_len, batch_size, vocab_size = outputs.size()
         loss = F.cross_entropy(outputs.view(seq_len * batch_size, vocab_size),
-                          batch.trg[1:].view(-1),
-                          ignore_index=hp.pad_idx)
-        total_loss += loss.data[0]
+                               batch.trg[1:].view(-1),
+                               ignore_index=hp.pad_idx)
+        total_loss += loss.item()
 
         # tensorboard logging
         if i == random_batch:
@@ -66,16 +66,16 @@ def train(model, optimizer, scheduler, train_iter, val_iter,
             outputs, masks = model(batch.src, teacher)
             seq_len, batch_size, vocab_size = outputs.size()
             loss = F.cross_entropy(outputs.view(seq_len * batch_size, vocab_size),
-                              batch.trg[1:].view(-1),
-                              ignore_index=hp.pad_idx)
+                                   batch.trg[1:].view(-1),
+                                   ignore_index=hp.pad_idx)
             loss.backward()
-            nn.utils.clip_grad_norm(model.parameters(), 10.0, norm_type=2)  # prevent exploding grads
+            nn.utils.clip_grad_norm_(model.parameters(), 10.0, norm_type=2)  # prevent exploding grads
             scheduler.step()
             optimizer.step()
 
             # tensorboard logging
-            pbar.set_description(f'loss: {loss.data[0]:.4f}')
-            writer.add_scalar('loss', loss.data[0], step)
+            pbar.set_description(f'loss: {loss.item():.4f}')
+            writer.add_scalar('loss', loss.item(), step)
             writer.add_scalar('lr', scheduler.lr, step)
             step += 1
         torch.save(model.state_dict(), f'checkpoints/seq2seq_{step}.pt')

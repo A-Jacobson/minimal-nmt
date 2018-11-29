@@ -16,7 +16,7 @@ decoder = Decoder(target_vocab_size=len(EN.vocab),
                   n_layers=hp.n_layers, dropout=hp.dropout)
 seq2seq = Seq2Seq(encoder, decoder)
 
-seq2seq.cuda(device=hp.device)
+seq2seq.to(hp.device)
 optimizer = Adam(seq2seq.parameters(), lr=hp.max_lr)
 scheduler = SGDRScheduler(optimizer, max_lr=hp.max_lr, cycle_length=hp.cycle_length)
 

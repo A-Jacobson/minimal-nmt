@@ -41,7 +41,7 @@ class Decoder(nn.Module):
         decodes one output frame
         """
         embedded = self.embed(output)  # (1, batch, embed_dim)
-        context, mask = self.attention(decoder_hidden[:-1], encoder_out)  # 1, 1, 50 (seq, batch, hidden_dim)
+        context, mask = self.attention(decoder_hidden[-1:], encoder_out)  # 1, 1, 50 (seq, batch, hidden_dim)
         rnn_output, decoder_hidden = self.gru(torch.cat([embedded, context], dim=2),
                                               decoder_hidden)
         output = self.out(torch.cat([rnn_output, context], 2))

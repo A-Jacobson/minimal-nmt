@@ -1,8 +1,8 @@
-spacy==2.0.5
-numpy==1.12.1
-matplotlib==2.0.2
-tqdm==4.19.5
-torchtext==0.2.1
-Pillow==5.0.0
-seaborn==0.8.1
-tensorboardX==1.1
+spacy>=2.0.5
+numpy>=1.12.1
+matplotlib>=2.0.2
+tqdm>=4.19.5
+torchtext>=0.2.1
+Pillow>=5.0.0
+seaborn>=0.8.1
+tensorboardX>=1.1
