@@ -24,9 +24,9 @@ https://arxiv.org/pdf/1703.03906.pdf
 
 ## Setup
 
-1. install pytorch:
+1. install pytorch 0.4:
 ```
-conda install pytorch -c pytorch
+conda install pytorch -c pytorch=0.4.1 
 ```
 
 2. install other requirements:
